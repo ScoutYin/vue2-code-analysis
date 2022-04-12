@@ -385,10 +385,15 @@ function assertObjectType (name: string, value: any, vm: ?Component) {
  * Merge two option objects into a new one.
  * Core utility used in both instantiation and inheritance.
  */
+/**
+ * 合并选项
+ * 在实例初始化时会调用，用于初始化vm.$options，此时会传入vm参数
+ * 在Vue.extend()中也会调用，用于合并父类options和扩展options，此时不会传入vm参数
+ */
 export function mergeOptions (
   parent: Object,
   child: Object,
-  vm?: Component
+  vm?: Component // 传了vm则表示是实例初始化时调用的情况
 ): Object {
   if (process.env.NODE_ENV !== 'production') {
     checkComponents(child)
