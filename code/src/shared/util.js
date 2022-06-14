@@ -1,27 +1,47 @@
 /* @flow */
 
+// Object.freeze() 方法用于冻结一个对象。
+// 一个被冻结的对象再也不能被修改；
+// 冻结了一个对象则不能向这个对象添加新的属性，
+// 不能删除已有属性，不能修改该对象已有属性的可枚举性、可配置性、可写性，
+// 以及不能修改已有属性的值。
+// 此外，冻结一个对象后该对象的原型也不能被修改。
+// freeze() 返回和传入的参数相同的对象。
 export const emptyObject = Object.freeze({})
 
 // These helpers produce better VM code in JS engines due to their
 // explicitness and function inlining.
+// 判断一个值是否为 undefined 或者 null
 export function isUndef (v: any): boolean %checks {
   return v === undefined || v === null
 }
 
+/**
+ * 判断一个值是否是 不为 undefined 或者 null 的值
+ * @param {*} v
+ */
 export function isDef (v: any): boolean %checks {
   return v !== undefined && v !== null
 }
 
+/**
+ * 判断一个值是否严格等于 true，而不是 ==
+ * @param {*} v
+ */
 export function isTrue (v: any): boolean %checks {
   return v === true
 }
-
+/**
+ * 判断一个值是否严格等于 false 而不是 ==
+ * @param {*} v
+ */
 export function isFalse (v: any): boolean %checks {
   return v === false
 }
 
 /**
  * Check if value is primitive.
+ * 判断一个值是否为 string、number、symbol 或 boolean 类型的基础类型值
  */
 export function isPrimitive (value: any): boolean %checks {
   return (
@@ -37,6 +57,7 @@ export function isPrimitive (value: any): boolean %checks {
  * Quick object check - this is primarily used to tell
  * objects from primitive values when we know the value
  * is a JSON-compliant type.
+ * 判断一个值是否为 JSON 对象型的对象
  */
 export function isObject (obj: mixed): boolean %checks {
   return obj !== null && typeof obj === 'object'
@@ -47,6 +68,12 @@ export function isObject (obj: mixed): boolean %checks {
  */
 const _toString = Object.prototype.toString
 
+/**
+ * 得到一个值的具体类型
+ * 比如 [] -> '[object Array]' -> 'Array'
+ * @param {*} value
+ * @returns
+ */
 export function toRawType (value: any): string {
   return _toString.call(value).slice(8, -1)
 }
@@ -54,26 +81,41 @@ export function toRawType (value: any): string {
 /**
  * Strict object type check. Only returns true
  * for plain JavaScript objects.
+ * 判断一个值是否为“纯对象”，如 { a: 1 }，而非其他扩展对象如 RegExp、Date 等
  */
 export function isPlainObject (obj: any): boolean {
   return _toString.call(obj) === '[object Object]'
 }
 
+/**
+ * 判断一个值是否为正则对象
+ * @param {*} v
+ * @returns
+ */
 export function isRegExp (v: any): boolean {
   return _toString.call(v) === '[object RegExp]'
 }
 
 /**
  * Check if val is a valid array index.
+ * 判断一个值是否是合法的数组索引（index）
  */
 export function isValidArrayIndex (val: any): boolean {
   const n = parseFloat(String(val))
+  // 数组索引需为大于 0 的有限整数
   return n >= 0 && Math.floor(n) === n && isFinite(val)
 }
 
+/**
+ * 判断一个值是否为 Promise 对象
+ * @param {*} val
+ * @returns
+ */
 export function isPromise (val: any): boolean {
   return (
+    // 值不能为 undefined 和 null
     isDef(val) &&
+    // 并且它身上存在 then() 和 catch() 方法，则认定为 Promise 对象
     typeof val.then === 'function' &&
     typeof val.catch === 'function'
   )
@@ -81,18 +123,24 @@ export function isPromise (val: any): boolean {
 
 /**
  * Convert a value to a string that is actually rendered.
+ * 将一个值转换为在模板渲染中展示的字符串
  */
 export function toString (val: any): string {
+  // 如果值是 null，就是个空字符串''
   return val == null
     ? ''
+    // 如果是个数组，或者是个纯对象并且该纯对象的 toString 方法是原生的 Object.prototype.toString 方法
+    // 就使用 JSON.stringify 将该对象转成字符串
     : Array.isArray(val) || (isPlainObject(val) && val.toString === _toString)
       ? JSON.stringify(val, null, 2)
+      // 否则直接调用 String(val) 转字符串
       : String(val)
 }
 
 /**
  * Convert an input value to a number for persistence.
  * If the conversion fails, return original string.
+ * 将输入的值尝试转换为 number，如果得到的是 NaN，则认为转换失败，返回原字符串
  */
 export function toNumber (val: string): number | string {
   const n = parseFloat(val)
