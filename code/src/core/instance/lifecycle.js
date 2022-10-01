@@ -29,29 +29,51 @@ export function setActiveInstance(vm: Component) {
   }
 }
 
+/**
+ * 这个函数的作用是：
+ * 1. 找到当前组件实例的父组件（非抽象的），并与其进行关联，记录相互之间的父子关系
+ * 2. 确定 vm.$root，即该组件的根组件
+ * 3. 给该组件实例 vm 上添加一系列属性和初始值
+ * @param {*} vm
+ */
 export function initLifecycle (vm: Component) {
   const options = vm.$options
 
+  // 定位到第一个非抽象的父组件，
+  // 什么叫非抽象的组件？
+  // 在定义一个组件时，如果指定 abstract 为 true，则该组件就是非抽象组件
+  // 抽象组件的特点是一般不渲染真实 DOM
+  // 如 keep-alive、transition 等组件都有属于非抽象组件
   // locate first non-abstract parent
   let parent = options.parent
+  // 如果当前实例有父组件，且当前实例不是抽象的
   if (parent && !options.abstract) {
+    // 顺着父级组件链查找第一个不为抽象组件的组件，才是当前组件的父组件
     while (parent.$options.abstract && parent.$parent) {
       parent = parent.$parent
     }
+    // 并将当前组件保存到父组件的 $children 数组中，表示为 parent 的子组件
     parent.$children.push(vm)
   }
 
+  // 指定当前组件的父组件
   vm.$parent = parent
+  // 指定组件的 $root 属性，及根组件，如果父组件的 $root 存在，则执行父组件的 $root，因为根组件只有一个
+  // 否则说明当前组件就是根组件
   vm.$root = parent ? parent.$root : vm
 
+  // 以下是对该组件的一些属性进行初始化
   vm.$children = []
   vm.$refs = {}
 
   vm._watcher = null
   vm._inactive = null
   vm._directInactive = false
+  // 是否已挂载
   vm._isMounted = false
+
   vm._isDestroyed = false
+  // 当前组件是否已被卸载
   vm._isBeingDestroyed = false
 }
 
