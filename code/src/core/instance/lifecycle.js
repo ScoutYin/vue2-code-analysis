@@ -357,17 +357,27 @@ export function deactivateChildComponent (vm: Component, direct?: boolean) {
 }
 
 export function callHook (vm: Component, hook: string) {
+  // 调用 pushTarget()，不传递参数，相当于将 Dep.target 置为 undefined
+  // 就不会触发依赖收集
   // #7573 disable dep collection when invoking lifecycle hooks
   pushTarget()
   const handlers = vm.$options[hook]
   const info = `${hook} hook`
+  // 如果过没有使用相应的钩子函数，则 handlers 就是 undefined，而不是空数组
   if (handlers) {
+    // 经过 mergeOptions 后，钩子函数如果存在，则会被合并成数组
+    // 因此此处需要循环调用
     for (let i = 0, j = handlers.length; i < j; i++) {
       invokeWithErrorHandling(handlers[i], vm, null, vm, info)
     }
   }
+  // 表示当前组件是否存在钩子事件监听
+  // 比如在父组件中：
+  // <Child @hook:created="xxx"></Child>
   if (vm._hasHookEvent) {
+    // 父组件如果监听子组件的钩子函数，将在这里触发
     vm.$emit('hook:' + hook)
   }
+  // 与 pushTarget() 配对使用，将 Dep.target 更新为原来的
   popTarget()
 }
