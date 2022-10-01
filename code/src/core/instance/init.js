@@ -16,20 +16,23 @@ let uid = 0
 export function initMixin (Vue: Class<Component>) {
   // 给Vue原型上添加_init方法，将会在Vue构造函数内被调用
   Vue.prototype._init = function (options?: Object) {
+    // Vue 实例，也即组件实例
     const vm: Component = this
     // 实例的唯一id
     vm._uid = uid++
 
     // 开发环境时进行的性能测定
     let startTag, endTag
+    // 在非生产环境时，需 config 中开启了性能测定，并且 mark 方法存在，才运行性能测定
     /* istanbul ignore if */
     if (process.env.NODE_ENV !== 'production' && config.performance && mark) {
       startTag = `vue-perf-start:${vm._uid}`
       endTag = `vue-perf-end:${vm._uid}`
+      // 标记性能测试起点
       mark(startTag)
     }
 
-    // 表示这个对象是Vue实例，作为避免被observe的一个标识
+    // 表示这个对象是Vue实例，区分于其他对象，可以作为避免被 observe 的一个标识
     vm._isVue = true
     // merge options
     if (options && options._isComponent) {
@@ -38,7 +41,8 @@ export function initMixin (Vue: Class<Component>) {
       // internal component options needs special treatment.
       initInternalComponent(vm, options)
     } else {
-      // 合并选项
+      // 合并选项，给实例添加了 $options 属性，这个属性主要被用来后面的实例初始化阶段
+      // 后面会发现下面看到的 init* 系列方法中都用到了这个属性
       vm.$options = mergeOptions(
         // 构造函数选项
         resolveConstructorOptions(vm.constructor),
@@ -54,15 +58,22 @@ export function initMixin (Vue: Class<Component>) {
     } else {
       vm._renderProxy = vm
     }
-    // expose real self
+
+    // 暴露真实的实例本身，比如在 render 中获取 vm._self.xxx
+    // 因为 vm._renderProxy 并不一定等于vm，可能是一个代理对象（在上面的 initProxy 中）
     vm._self = vm
     initLifecycle(vm)
     initEvents(vm)
     initRender(vm)
+    // 在进行数据初始化之前触发 beforeCreate 钩子
     callHook(vm, 'beforeCreate')
+    // 初始化 inject
     initInjections(vm) // resolve injections before data/props
+    // 初始化 props、data、computed、watch、methods
     initState(vm)
+    // 初始化 provide
     initProvide(vm) // resolve provide after data/props
+    // 在数据初始化之后触发 created 钩子
     callHook(vm, 'created')
 
     /* istanbul ignore if */
@@ -97,6 +108,13 @@ export function initInternalComponent (vm: Component, options: InternalComponent
   }
 }
 
+/**
+ * 解析并合并构造函数的 options ，得到一个新的 options
+ * 包括通过 Vue.extend() 得到的子类构造函数以及父类构造函数的 options
+ * 如，Sub.options, Parent.options, Vue.options
+ * @param {*} Ctor
+ * @returns
+ */
 export function resolveConstructorOptions (Ctor: Class<Component>) {
   let options = Ctor.options
   if (Ctor.super) {
