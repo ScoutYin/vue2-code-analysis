@@ -88,6 +88,7 @@ export default class Watcher {
     this.cb = cb
     this.id = ++uid // uid for batching
     this.active = true
+    // 如果是计算属性 watcher，则 lazy 为 true，否则为 false
     this.dirty = this.lazy // for lazy watchers
     this.deps = []
     this.newDeps = []
@@ -203,10 +204,16 @@ export default class Watcher {
   update () {
     /* istanbul ignore else */
     if (this.lazy) {
+      // 如果是惰性求值模式，如 computed watcher
+      // 那么只会将 dirty 属性置为 true
+      // 真正的求值会在 computed 被读取时触发
       this.dirty = true
     } else if (this.sync) {
+      // 如果该 watcher 是采用同步更新的方式，则直接运行 run
+      // 在 run() 函数中如果 watcher 的值发生变化，则会直接执行回调 cb
       this.run()
     } else {
+      // 否则的话，默认都是放到需要更新的 watcher 队列中，等待一起异步更新
       queueWatcher(this)
     }
   }
@@ -217,8 +224,10 @@ export default class Watcher {
    */
   run () {
     if (this.active) {
+      // 求值
       const value = this.get()
       if (
+        // 判断新旧值不一样
         value !== this.value ||
         // Deep watchers and watchers on Object/Arrays should fire even
         // when the value is the same, because the value may
@@ -228,11 +237,15 @@ export default class Watcher {
       ) {
         // set new value
         const oldValue = this.value
+        // 使用新值更新 watcher 的 value
         this.value = value
         if (this.user) {
+          // 如果是开发者定义的 watcher，则处理可能发生的错误
           const info = `callback for watcher "${this.expression}"`
+          // 执行值变更后的回调
           invokeWithErrorHandling(this.cb, this.vm, [value, oldValue], this.vm, info)
         } else {
+          // 非开发者定义的 watcher，直接执行回调
           this.cb.call(this.vm, value, oldValue)
         }
       }
@@ -245,11 +258,23 @@ export default class Watcher {
    */
   evaluate () {
     this.value = this.get()
+    // 每次求值完后将 dirty 重新置为 false
     this.dirty = false
   }
 
   /**
    * Depend on all deps collected by this watcher.
+   * 让其他的 watcher 收集到该 watcher 所依赖的 deps。
+   * 比如：存在计算属性 a，计算属性 a 依赖 $data.b
+   * 模板中使用计算属性 <div>{{ a }}</div>
+   * 如果 $data.b 发生变化，将触发计算属性 a 的 watcherA.update()，但因为计算属性的 watcher 是惰性求值的
+   * 如果没有重新执行 render 进行模板渲染，便不会重新读取计算属性 a，watcherA.get() 也就一直不会执行，
+   * 导致视图中 a 的数据还是旧的，
+   *
+   * 因此需要将计算属性 a 所依赖的 deps 也被 renderWatcher 收集到，
+   * 这样 $data.b 变化后，就能触发 renderWatcher.update()，
+   * 从而读取计算属性 a，促使 watcherA 进行求值，
+   * 最终将视图中的 a 更新
    */
   depend () {
     let i = this.deps.length
@@ -262,6 +287,7 @@ export default class Watcher {
    * Remove self from all dependencies' subscriber list.
    */
   teardown () {
+    // 如果 watcher 为激活状态，才进行下列卸载操作
     if (this.active) {
       // remove self from vm's watcher list
       // this is a somewhat expensive operation so we skip it
@@ -270,9 +296,11 @@ export default class Watcher {
         remove(this.vm._watchers, this)
       }
       let i = this.deps.length
+      // 将该 watcher 从其依赖的每个 dep 中的订阅者中移除
       while (i--) {
         this.deps[i].removeSub(this)
       }
+      // 调整为非激活状态
       this.active = false
     }
   }

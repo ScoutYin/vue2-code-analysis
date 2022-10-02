@@ -64,6 +64,7 @@ export default class Dep {
       subs.sort((a, b) => a.id - b.id)
     }
     for (let i = 0, l = subs.length; i < l; i++) {
+      // 通知依赖当前 dep 的订阅者（watcher）进行更新
       subs[i].update()
     }
   }

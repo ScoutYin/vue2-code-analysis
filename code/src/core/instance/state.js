@@ -63,6 +63,7 @@ export function initState (vm: Component) {
 }
 
 function initProps (vm: Component, propsOptions: Object) {
+  // 组件真实接收到的从外界传递进来的 props 数据
   const propsData = vm.$options.propsData || {}
   const props = vm._props = {}
   // cache prop keys so that future props updates can iterate using Array
@@ -165,6 +166,7 @@ export function getData (data: Function, vm: Component): any {
   }
 }
 
+// lazy 为 true，表示采用惰性求值的方式
 const computedWatcherOptions = { lazy: true }
 
 function initComputed (vm: Component, computed: Object) {
@@ -175,6 +177,7 @@ function initComputed (vm: Component, computed: Object) {
 
   for (const key in computed) {
     const userDef = computed[key]
+    // 开发者定义的 computed 可能是个函数或者包含 get 方法的对象
     const getter = typeof userDef === 'function' ? userDef : userDef.get
     if (process.env.NODE_ENV !== 'production' && getter == null) {
       warn(
@@ -185,6 +188,7 @@ function initComputed (vm: Component, computed: Object) {
 
     if (!isSSR) {
       // create internal watcher for the computed property.
+      // 创建计算属性 watcher
       watchers[key] = new Watcher(
         vm,
         getter || noop,
@@ -199,6 +203,7 @@ function initComputed (vm: Component, computed: Object) {
     if (!(key in vm)) {
       defineComputed(vm, key, userDef)
     } else if (process.env.NODE_ENV !== 'production') {
+      // computed 中的数据属性名不能和 data、props、methods 中的重复，进行提示
       if (key in vm.$data) {
         warn(`The computed property "${key}" is already defined in data.`, vm)
       } else if (vm.$options.props && key in vm.$options.props) {
@@ -220,6 +225,7 @@ export function defineComputed (
     sharedPropertyDefinition.get = shouldCache
       ? createComputedGetter(key)
       : createGetterInvoker(userDef)
+    // 如果开发者定义的是一个函数，则说明开发者没有提供 set，默认给个 noop 函数
     sharedPropertyDefinition.set = noop
   } else {
     sharedPropertyDefinition.get = userDef.get
@@ -238,19 +244,28 @@ export function defineComputed (
       )
     }
   }
+  // 设置计算属性的 getter/setter，在 getter 内惰性求值
   Object.defineProperty(target, key, sharedPropertyDefinition)
 }
 
 function createComputedGetter (key) {
   return function computedGetter () {
+    // 找到 key 对应的计算属性的 watcher
     const watcher = this._computedWatchers && this._computedWatchers[key]
     if (watcher) {
+      // watcher.dirty 为 true，表示 watcher.value 此时可能已经不是最新的（因为 watcher 依赖的数据发生改变了）
+      // 因此需要重新求值，才能获取到最新的值
+      // 只有在 watcher.dirty 为 true 时，才会进行
       if (watcher.dirty) {
+        // 重新求值，并将 watcher.dirty 重置为 false
         watcher.evaluate()
       }
       if (Dep.target) {
+        // 让其他依赖当前 计算属性的 watcher 也收集到该计算属性的 watcher 所依赖的 deps
+        // 不然触发不了更新
         watcher.depend()
       }
+      // 返回 watcher 最新的值
       return watcher.value
     }
   }
@@ -293,8 +308,10 @@ function initMethods (vm: Component, methods: Object) {
 function initWatch (vm: Component, watch: Object) {
   for (const key in watch) {
     const handler = watch[key]
+    // 说明 handler 其实可以指定为一个函数数组
     if (Array.isArray(handler)) {
       for (let i = 0; i < handler.length; i++) {
+        // 每一个回调函数都会创建一个对应的 watcher
         createWatcher(vm, key, handler[i])
       }
     } else {
@@ -303,6 +320,10 @@ function initWatch (vm: Component, watch: Object) {
   }
 }
 
+/**
+ * 对创建 watcher 时传入的数据进行规范化处理
+ * 并最终调用 Vue.prototype.$watch 进行创建 watcher
+ */
 function createWatcher (
   vm: Component,
   expOrFn: string | Function,
@@ -346,23 +367,34 @@ export function stateMixin (Vue: Class<Component>) {
   Vue.prototype.$delete = del
 
   Vue.prototype.$watch = function (
+    // 监听的表达式或函数
     expOrFn: string | Function,
+    // 表达式的值变化后要执行的回调
     cb: any,
+    // 配置
     options?: Object
   ): Function {
     const vm: Component = this
+    // 如果 cb 是个对象，如 { handler: xxx, immediate: true }
+    // 则交由 createWatcher 进行一次规范化处理，
+    // createWatcher 最终还是会调用 vm.$watch 来创建 watcher
     if (isPlainObject(cb)) {
       return createWatcher(vm, expOrFn, cb, options)
     }
     options = options || {}
+    // user 为 true，标识这个 watcher 是开发者定义的，而不是框架内部定义的
     options.user = true
+    // 实例化一个 watcher
     const watcher = new Watcher(vm, expOrFn, cb, options)
+    // 如果要求立即执行，则手动调用一次 cb
     if (options.immediate) {
       const info = `callback for immediate watcher "${watcher.expression}"`
+      // 避免在执行 cb 的时候被收集依赖
       pushTarget()
       invokeWithErrorHandling(cb, vm, [watcher.value], vm, info)
       popTarget()
     }
+    // 返回一个卸载 watcher 的方法
     return function unwatchFn () {
       watcher.teardown()
     }

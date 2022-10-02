@@ -7,6 +7,7 @@ import { defineReactive, toggleObserving } from '../observer/index'
 export function initProvide (vm: Component) {
   const provide = vm.$options.provide
   if (provide) {
+    // provide 的处理比较简单，给 vm._provided 属性，该属性指向一个 provide 的数据对象
     vm._provided = typeof provide === 'function'
       ? provide.call(vm)
       : provide
@@ -16,6 +17,7 @@ export function initProvide (vm: Component) {
 export function initInjections (vm: Component) {
   const result = resolveInject(vm.$options.inject, vm)
   if (result) {
+    // 关闭监听开关，因为 inject 进来的数据不需要设置为响应式的
     toggleObserving(false)
     Object.keys(result).forEach(key => {
       /* istanbul ignore else */
@@ -40,6 +42,8 @@ export function resolveInject (inject: any, vm: Component): ?Object {
   if (inject) {
     // inject is :any because flow is not smart enough to figure out cached
     const result = Object.create(null)
+    // 判断运行环境是否支持原生的 Symbol 和 Reflect.ownKeys()，获取到 inject 的 keys
+    // 经过规范化处理处理后，此处的 inject 是对象，如 { [key]: { from: 'xxx', ... }}
     const keys = hasSymbol
       ? Reflect.ownKeys(inject)
       : Object.keys(inject)
@@ -50,11 +54,16 @@ export function resolveInject (inject: any, vm: Component): ?Object {
       if (key === '__ob__') continue
       const provideKey = inject[key].from
       let source = vm
+      // 为什么这边 source 从 vm 开始？
+      // 难道不会获取到该组件自身的 provide 的数据吗？
+      // 答案是不会。因为当前组件的 initProvide 是在 initInjections 之后执行的
+      // 因此此时 vm._provided 属性还不存在，下面的 if 判断就不会为真
       while (source) {
         if (source._provided && hasOwn(source._provided, provideKey)) {
           result[key] = source._provided[provideKey]
           break
         }
+        // 顺着父级组件链找
         source = source.$parent
       }
       if (!source) {

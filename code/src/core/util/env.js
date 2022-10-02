@@ -1,9 +1,11 @@
 /* @flow */
 
+// 标识在当前运行环境中是否可以使用 __proto__ 属性
 // can we use __proto__?
 export const hasProto = '__proto__' in {}
 
 // Browser environment sniffing
+// 根据 window 是否存在，判断是否在浏览器环境
 export const inBrowser = typeof window !== 'undefined'
 export const inWeex = typeof WXEnvironment !== 'undefined' && !!WXEnvironment.platform
 export const weexPlatform = inWeex && WXEnvironment.platform.toLowerCase()
@@ -58,7 +60,7 @@ export const devtools = inBrowser && window.__VUE_DEVTOOLS_GLOBAL_HOOK__
 export function isNative (Ctor: any): boolean {
   return typeof Ctor === 'function' && /native code/.test(Ctor.toString())
 }
-
+// 标识当前宿主环境是否支持原生 Symbol 和 Reflect.ownKeys
 export const hasSymbol =
   typeof Symbol !== 'undefined' && isNative(Symbol) &&
   typeof Reflect !== 'undefined' && isNative(Reflect.ownKeys)
