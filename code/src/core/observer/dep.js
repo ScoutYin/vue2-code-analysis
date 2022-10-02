@@ -9,27 +9,47 @@ let uid = 0
 /**
  * A dep is an observable that can have multiple
  * directives subscribing to it.
+ * 依赖对象
  */
 export default class Dep {
+  // 指向当前要被收集的 watcher
   static target: ?Watcher;
+  // dep 实例的唯一标识
   id: number;
+  // 订阅者数组，即收集到的 watcher 实例数组
   subs: Array<Watcher>;
 
   constructor () {
+    // 初始化
     this.id = uid++
     this.subs = []
   }
 
+  /**
+   * 添加一个订阅者 watcher
+   * @param {*} sub
+   */
   addSub (sub: Watcher) {
     this.subs.push(sub)
   }
 
+  /**
+   * 移除一个订阅者 watcher
+   * @param {*} sub
+   */
   removeSub (sub: Watcher) {
     remove(this.subs, sub)
   }
 
+  /**
+   * 执行依赖收集
+   */
   depend () {
     if (Dep.target) {
+      /**
+       * 调用 watcher 的 addDep 方法，
+       * 在 watcher.addDep 方法中才会调用 dep.addSub
+       */
       Dep.target.addDep(this)
     }
   }
@@ -60,6 +80,9 @@ export function pushTarget (target: ?Watcher) {
   Dep.target = target
 }
 
+/**
+ * 与 pushTarget 成对使用
+ */
 export function popTarget () {
   targetStack.pop()
   Dep.target = targetStack[targetStack.length - 1]

@@ -36,9 +36,11 @@ export function parsePath (path: string): any {
     return
   }
   const segments = path.split('.')
+  // 返回一个 getter 函数
   return function (obj) {
     for (let i = 0; i < segments.length; i++) {
       if (!obj) return
+      // 一层一层取值，从而触发每层的响应式属性的 getter
       obj = obj[segments[i]]
     }
     return obj
