@@ -5,6 +5,7 @@ import { noop } from 'shared/util'
 import { handleError } from './error'
 import { isIE, isIOS, isNative } from './env'
 
+// 是否是使用微任务实现的 nextTick
 export let isUsingMicroTask = false
 
 const callbacks = []
@@ -80,6 +81,7 @@ if (typeof Promise !== 'undefined' && isNative(Promise)) {
 } else {
   // Fallback to setTimeout.
   timerFunc = () => {
+    // setTimeout 需要不停检查时间，因此性能没有 setImmediate 好
     setTimeout(flushCallbacks, 0)
   }
 }
@@ -99,10 +101,12 @@ export function nextTick (cb?: Function, ctx?: Object) {
   })
   if (!pending) {
     pending = true
+    // 优先级： Promise.then() > new MutationObserver() > setImmediate() > setTimeout()
     timerFunc()
   }
   // $flow-disable-line
   if (!cb && typeof Promise !== 'undefined') {
+    // 如果不传回调函数，则返回一个 Promise 实例
     return new Promise(resolve => {
       _resolve = resolve
     })

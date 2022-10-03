@@ -14,7 +14,7 @@ let uid = 0
 export default class Dep {
   // 指向当前要被收集的 watcher
   static target: ?Watcher;
-  // dep 实例的唯一标识
+  // dep 实例的唯一标识，因为 id 是自增的，因此也可以用来判断 dep 创建的顺序
   id: number;
   // 订阅者数组，即收集到的 watcher 实例数组
   subs: Array<Watcher>;

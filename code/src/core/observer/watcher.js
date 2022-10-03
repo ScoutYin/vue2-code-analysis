@@ -30,7 +30,7 @@ export default class Watcher {
   vm: Component;
   expression: string;
   cb: Function;
-  // 唯一标识
+  // 唯一标识，因为 id 是自增的，因此也可以用来判断 watcher 创建的顺序
   id: number;
   // 是否深度监听
   deep: boolean;

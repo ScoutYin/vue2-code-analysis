@@ -26,6 +26,7 @@ let index = 0
  * Reset the scheduler's state.
  */
 function resetSchedulerState () {
+  // 重置
   index = queue.length = activatedChildren.length = 0
   has = {}
   if (process.env.NODE_ENV !== 'production') {
@@ -70,6 +71,7 @@ if (inBrowser && !isIE) {
  */
 function flushSchedulerQueue () {
   currentFlushTimestamp = getNow()
+  // 标识正在进行清空队列
   flushing = true
   let watcher, id
 
@@ -88,12 +90,15 @@ function flushSchedulerQueue () {
   for (index = 0; index < queue.length; index++) {
     watcher = queue[index]
     if (watcher.before) {
+      // 调用 before 钩子
       watcher.before()
     }
     id = watcher.id
     has[id] = null
     watcher.run()
     // in dev build, check and stop circular updates.
+    // 上面已经将 has[id] 置为 null 了，如果此时发现 has[id] != null
+    // 说明 watcher.run() 过程中又触发了该 watcher 的更新，使该 watcher 又被推入队列中
     if (process.env.NODE_ENV !== 'production' && has[id] != null) {
       circular[id] = (circular[id] || 0) + 1
       if (circular[id] > MAX_UPDATE_COUNT) {
@@ -123,6 +128,7 @@ function flushSchedulerQueue () {
   // devtool hook
   /* istanbul ignore if */
   if (devtools && config.devtools) {
+    // 触发开发调试工具 devtools 的钩子
     devtools.emit('flush')
   }
 }
@@ -131,8 +137,10 @@ function callUpdatedHooks (queue) {
   let i = queue.length
   while (i--) {
     const watcher = queue[i]
+    // 获取到 watcher 关联的组件实例
     const vm = watcher.vm
     if (vm._watcher === watcher && vm._isMounted && !vm._isDestroyed) {
+      // 触发组件实例的 updated 钩子
       callHook(vm, 'updated')
     }
   }
@@ -165,6 +173,7 @@ export function queueWatcher (watcher: Watcher) {
   const id = watcher.id
   if (has[id] == null) {
     has[id] = true
+    // 如果不是正在清空对列的阶段，则将该 watcher 推入等待更新的队列
     if (!flushing) {
       queue.push(watcher)
     } else {
@@ -178,6 +187,7 @@ export function queueWatcher (watcher: Watcher) {
     }
     // queue the flush
     if (!waiting) {
+      // 标识正在等待异步更新
       waiting = true
 
       if (process.env.NODE_ENV !== 'production' && !config.async) {
